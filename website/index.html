@@ -1,0 +1,214 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Circle Packing Visualization</title>
+  <style>
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      max-width: 800px;
+      margin: 0 auto;
+      padding: 20px;
+      text-align: center;
+    }
+
+    .container {
+      max-width: 600px;
+      margin: 0 auto;
+    }
+
+    .controls {
+      width: 100%;
+      margin-bottom: 20px;
+    }
+
+    .control-row {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      margin-top: 8px;
+    }
+
+    .control-row input[type="range"] {
+      flex-grow: 1;
+    }
+
+    .control-row input[type="number"] {
+      width: 80px;
+      padding: 4px;
+      border: 1px solid #ccc;
+      border-radius: 4px;
+    }
+
+    .stats {
+      display: flex;
+      justify-content: space-between;
+      width: 100%;
+      margin-bottom: 16px;
+      padding: 10px;
+      background-color: #f0f0f0;
+      border-radius: 4px;
+    }
+
+    .stats span {
+      font-weight: bold;
+    }
+
+    .visualization {
+      border: 1px solid #ccc;
+      margin-bottom: 16px;
+    }
+
+    .instructions {
+      font-size: 14px;
+      color: #666;
+    }
+  </style>
+</head>
+<body>
+  <div id="app"></div>
+
+  <!-- Load React -->
+  <script src="https://unpkg.com/react@17/umd/react.development.js"></script>
+  <script src="https://unpkg.com/react-dom@17/umd/react-dom.development.js"></script>
+
+  <!-- Load Babel for JSX -->
+  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+
+  <!-- Your React Component -->
+  <script type="text/babel">
+    const CirclePacking = () => {
+      const [radius, setRadius] = React.useState(0.05);
+      const [packingData, setPackingData] = React.useState({ circles: [], count: 0, density: 0 });
+      const squareSize = 400; 
+      const unitSquareSize = 1.0; 
+      const calculateTriangularPacking = (squareSizeUnit, circleRadius) => {
+      const horizontalSpacing = 2 * circleRadius;
+      const verticalSpacing = Math.sqrt(3) * circleRadius;
+      const maxRows = Math.floor(squareSizeUnit / verticalSpacing) + 2;
+      const circlesCenters = [];
+
+        for (let row = 0; row < maxRows; row++) {
+          const offset = row % 2 === 1 ? circleRadius : 0;
+          const maxCols = Math.floor((squareSizeUnit - offset) / horizontalSpacing) + 2;
+
+          for (let col = 0; col < maxCols; col++) {
+            const x = offset + col * horizontalSpacing;
+            const y = circleRadius + row * verticalSpacing;
+            if (
+              x - circleRadius >= 0 &&
+              x + circleRadius <= squareSizeUnit &&
+              y - circleRadius >= 0 &&
+              y + circleRadius <= squareSizeUnit
+            ) {
+              circlesCenters.push({ x, y });
+            }
+          }
+        }
+        
+        const totalArea = squareSizeUnit ** 2;
+        const circleArea = Math.PI * (circleRadius ** 2);
+        const coveredArea = circlesCenters.length * circleArea;
+        const density = coveredArea / totalArea;
+
+        return {
+          circles: circlesCenters,
+          count: circlesCenters.length,
+          density
+        };
+      };
+      
+      React.useEffect(() => {
+        const data = calculateTriangularPacking(unitSquareSize, radius);
+        setPackingData(data);
+      }, [radius]);
+
+      const scaleToPixels = (unitCoord) => unitCoord * squareSize;
+
+      return (
+        <div className="container">
+          <h2>Circle Packing Visualization</h2>
+
+          {/* Controls */}
+          <div className="controls">
+            <label>
+              Circle Radius:
+            </label>
+            <div className="control-row">
+              <input
+                type="range"
+                min="0.01"
+                max="0.5"
+                step="0.001"
+                value={radius}
+                onChange={(e) => setRadius(parseFloat(e.target.value))}
+              />
+              <div>
+                <input
+                  type="number"
+                  min="0.01"
+                  max="0.5"
+                  step="0.001"
+                  value={radius}
+                  onChange={(e) => {
+                    const val = parseFloat(e.target.value);
+                    if (!isNaN(val) && val >= 0.01 && val <= 0.5) {
+                      setRadius(val);
+                    }
+                  }}
+                />
+              </div>
+            </div>
+          </div>
+
+          {/* Statistics */}
+          <div className="stats">
+            <div>
+              <span>Number of Circles:</span> {packingData.count}
+            </div>
+            <div>
+              <span>Packing Density:</span> {(packingData.density * 100).toFixed(2)}%
+            </div>
+          </div>
+
+          {/* Visualization */}
+          <div className="visualization">
+            <svg width={squareSize} height={squareSize} viewBox={`0 0 ${squareSize} ${squareSize}`}>
+              {/* Background square */}
+              <rect
+                x="0"
+                y="0"
+                width={squareSize}
+                height={squareSize}
+                fill="#f0f0f0"
+                stroke="#000"
+              />
+
+              {/* Circles */}
+              {packingData.circles.map((circle, index) => (
+                <circle
+                  key={index}
+                  cx={scaleToPixels(circle.x)}
+                  cy={scaleToPixels(circle.y)}
+                  r={scaleToPixels(radius)}
+                  fill="#3b82f6"
+                  opacity="0.7"
+                  stroke="#1e40af"
+                  strokeWidth="1"
+                />
+              ))}
+            </svg>
+          </div>
+
+          <div className="instructions">
+            Move the slider to adjust the circle radius and see how it affects the packing density.
+          </div>
+        </div>
+      );
+    };
+    
+    ReactDOM.render(<CirclePacking />, document.getElementById('app'));
+  </script>
+</body>
+</html>
